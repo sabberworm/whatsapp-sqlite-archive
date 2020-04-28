@@ -5,19 +5,23 @@ const MIGRATIONS = [
 		"id"	INTEGER PRIMARY KEY,
 		"version"	UNSIGNED INT
 	)`,
+	`CREATE TABLE "files" (
+		"hash"	TEXT PRIMARY KEY,
+		"data"	BLOB
+	)`,
 	`CREATE TABLE "attachments" (
-		"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
-		"data"	BLOB,
-		"hash"	TEXT
+		"id"	INTEGER PRIMARY KEY,
+		"file"	TEXT,
+		"name"	TEXT,
+		FOREIGN KEY("file") REFERENCES "files"("hash")
 	)`,
 	`CREATE TABLE "chats" (
-		"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
-		"name"	TEXT,
-		"hash"	TEXT
+		"id"	INTEGER PRIMARY KEY,
+		"name"	TEXT UNIQUE
 	)`,
 	`CREATE TABLE "messages" (
-		"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
-		"date"	DATETIME,
+		"id"	INTEGER PRIMARY KEY,
+		"date"	DATETIME NOT NULL,
 		"sender"	TEXT,
 		"message"	TEXT,
 		"attachment"	INTEGER,
@@ -42,11 +46,7 @@ export async function migrate(con : Connection, from : number, to : number = DB_
 
 export function checkVersion(con : Connection) {
 	try {
-		const res = con.db.query('SELECT version FROM meta LIMIT 1', []);
-		const row = res.next();
-		const version = (row.value as number[])[0] || 0;
-		res.done();
-		return version;
+		return con.singleValue('SELECT version FROM meta LIMIT 1') as number || 0;
 	} catch(e) {
 		// Table doesn’t exist yet
 		return 0;

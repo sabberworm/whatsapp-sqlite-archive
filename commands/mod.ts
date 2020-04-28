@@ -1,4 +1,5 @@
-export { init, migrate } from './db.ts';
+
+export { load } from './import.ts';
 
 export default function invalidCommand(validCommands : string[]) {
 	console.error('Missing or invalid command given');
