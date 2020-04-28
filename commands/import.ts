@@ -6,6 +6,23 @@ import args from 'https://deno.land/x/args@1.0.11/wrapper.ts';
 import { Connection } from '../db/mod.ts';
 import { ArchiveProvider, ExtractedArchive, ZippedArchive } from '../helpers/archive.ts';
 
+const MESSAGE_START = /^\[(\d{2}\.\d{2}\.\d{2}, \d{2}:\d{2}:\d{2})\] (([^:]+): )?/;
+
+interface Message {
+	date : string;
+	sender : string | undefined;
+	contents : string;
+}
+
+function storeMessage(message : Message | undefined, chatId : number, con : Connection) {
+	if(!message) {
+		return;
+	}
+	con.db.query(
+		'INSERT INTO messages (date, sender, message, chat) VALUES (?, ?, ?, ?)',
+		[message.date, message.sender, message.contents, chatId]
+	);
+}
 
 export async function load(con : Connection, argv : string[]) {
 	const parser = args
@@ -92,7 +109,33 @@ export async function load(con : Connection, argv : string[]) {
 	}
 
 	const chat = await archiveProvider.chat();
-	console.log(chat.substr(0, 200));
+
+	const lines = chat
+		// Strip text direction markers
+		.replace(/(\u200E|\u200F)/g, '')
+		// Split on newlines
+		.split(/\r?\n/);
+	let currentMessage : Message | undefined;
+	for(const line of lines) {
+		const match = line.match(MESSAGE_START);
+		if(match) {
+			storeMessage(currentMessage, chatId, con);
+			currentMessage = {
+				date: match[1],
+				sender: match[3],
+				contents: line.replace(MESSAGE_START, ''),
+			};
+			continue;
+		}
+		if(!currentMessage) {
+			if(line) {
+				console.warn(`Don’t know what to do with ${line}`);
+			}
+			continue;
+		}
+		currentMessage.contents += '\n' + line;
+	}
+	storeMessage(currentMessage, chatId, con);
 
 	con.save();
 }
