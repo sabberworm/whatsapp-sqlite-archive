@@ -1,7 +1,29 @@
 import { Connection } from './mod.ts';
 
 const MIGRATIONS = [
-	`CREATE TABLE meta (version UNSIGNED INT)`,
+	`CREATE TABLE "meta" (
+		"version"	UNSIGNED INT
+	)`,
+	`CREATE TABLE "attachments" (
+		"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+		"data"	BLOB,
+		"hash"	TEXT
+	)`,
+	`CREATE TABLE "chats" (
+		"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+		"name"	TEXT,
+		"hash"	TEXT
+	)`,
+	`CREATE TABLE "messages" (
+		"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+		"date"	DATETIME,
+		"sender"	TEXT,
+		"message"	TEXT,
+		"attachment"	INTEGER,
+		"chat"	INTEGER,
+		FOREIGN KEY("chat") REFERENCES "chats"("id"),
+		FOREIGN KEY("attachment") REFERENCES "attachments"("id")
+	)`
 ];
 
 export const DB_VERSION = MIGRATIONS.length;
@@ -11,7 +33,7 @@ export async function migrate(con : Connection, from : number, to : number = DB_
 	for(const migration of migrations) {
 		con.db.query(migration, []);
 	}
-	con.db.query('INSERT OR REPLACE INTO meta (version) VALUES (?)', [to]);
+	con.db.query('UPDATE meta SET version = ? WHERE 1', [from + migrations.length]);
 	await con.save();
 }
 
