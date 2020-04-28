@@ -23,7 +23,6 @@ export function checkVersion(con : Connection) {
 		return (row.value as number[])[0];
 	} catch(e) {
 		// Table doesn’t exist yet
+		return 0;
 	}
-
-	return 0;
 }
