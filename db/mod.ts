@@ -1,4 +1,4 @@
-import { DB, open, save } from "https://deno.land/x/sqlite/mod.ts";
+import { DB, open, save } from 'https://deno.land/x/sqlite/mod.ts';
 
 export class Connection {
 	constructor(public db : DB) {};

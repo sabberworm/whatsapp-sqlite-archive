@@ -1,5 +1,5 @@
 import { resolve } from 'https://deno.land/std@v0.41.0/path/posix.ts';
-import { JSZip, readZip } from "https://deno.land/x/jszip@0.3.0/mod.ts";
+import { JSZip, readZip } from 'https://deno.land/x/jszip@0.3.0/mod.ts';
 
 
 export interface ArchiveProvider {
@@ -19,7 +19,7 @@ export class ExtractedArchive implements ArchiveProvider {
 	}
 
 	async chat() {
-		const decoder = new TextDecoder("utf-8");
+		const decoder = new TextDecoder('utf-8');
 		return decoder.decode(await Deno.readFile(this.chatFile));
 	}
 

@@ -1,11 +1,10 @@
 import { BinaryFlag, EarlyExitFlag, PartialOption } from 'https://deno.land/x/args@1.0.11/flag-types.ts';
-import { MAIN_COMMAND } from "https://deno.land/x/args@1.0.11/symbols.ts";
+import { MAIN_COMMAND } from 'https://deno.land/x/args@1.0.11/symbols.ts';
 import { Text } from 'https://deno.land/x/args@1.0.11/value-types.ts';
 import args from 'https://deno.land/x/args@1.0.11/wrapper.ts';
 import * as commands from './commands/mod.ts';
 import { checkVersion, DB_VERSION, migrate } from './db/migrate.ts';
 import { openConnection } from './db/mod.ts';
-
 
 const parser = args
 	.describe('Keep WhatsApp chats in sqlite')
