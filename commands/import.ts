@@ -14,14 +14,80 @@ interface Message {
 	contents : string;
 }
 
-function storeMessage(message : Message | undefined, chatId : number, con : Connection) {
+async function storeMessages(
+	archiveProvider : ArchiveProvider,
+	chatId : number,
+	con : Connection,
+	doAmend = false,
+) {
+	const chat = await archiveProvider.chat();
+
+	const lines = chat
+		// Strip text direction markers
+		.replace(/(\u200E|\u200F)/g, '')
+		// Split on newlines
+		.split(/\r?\n/);
+
+	let count = 0;
+	let currentMessage : Message | undefined;
+	for(const line of lines) {
+		const match = line.match(MESSAGE_START);
+		if(match) {
+			count += storeMessage(currentMessage, chatId, con, doAmend);
+			currentMessage = {
+				date: match[1],
+				sender: match[3],
+				contents: line.replace(MESSAGE_START, ''),
+			};
+			continue;
+		}
+		if(!currentMessage) {
+			if(line) {
+				console.warn(`Don’t know what to do with ${line}`);
+			}
+			continue;
+		}
+		currentMessage.contents += '\n' + line;
+	}
+	count += storeMessage(currentMessage, chatId, con, doAmend);
+
+	return count;
+}
+
+function countExisting(message : Message, chatId : number, con : Connection) : number {
+	if(message.sender === undefined) {
+		return con.singleValue(
+			'SELECT COUNT(*) FROM messages WHERE chat = ? AND date = ? AND sender IS NULL',
+			[chatId, message.date],
+		);
+	}
+	return con.singleValue(
+		'SELECT COUNT(*) FROM messages WHERE chat = ? AND date = ? AND sender = ?',
+		[chatId, message.date, message.sender],
+	);
+}
+
+function storeMessage(
+	message : Message | undefined,
+	chatId : number,
+	con : Connection,
+	doAmend = false,
+) {
 	if(!message) {
-		return;
+		return 0;
+	}
+	if(doAmend) {
+		const existing = countExisting(message, chatId, con);
+		if(existing > 0) {
+			return 0;
+		}
+		console.log('not exists', existing, message);
 	}
 	con.db.query(
 		'INSERT INTO messages (date, sender, message, chat) VALUES (?, ?, ?, ?)',
-		[message.date, message.sender, message.contents, chatId]
+		[message.date, message.sender, message.contents, chatId],
 	);
+	return 1;
 }
 
 export async function load(con : Connection, argv : string[]) {
@@ -64,10 +130,10 @@ export async function load(con : Connection, argv : string[]) {
 				{
 					value: 'add',
 					describe: 'Imports all messages, including duplicates.'
-				}
+				},
 			),
 			default: 'amend',
-			describe: 'This option determines how messages are imported into a chat that already exists when --force is set.'
+			describe: 'This option determines how messages are imported into a chat that already exists when --force is set.',
 		}));
 
 	const res = parser.parse(argv);
@@ -108,34 +174,12 @@ export async function load(con : Connection, argv : string[]) {
 		}
 	}
 
-	const chat = await archiveProvider.chat();
+	const count = await storeMessages(archiveProvider, chatId, con, doAmend);
 
-	const lines = chat
-		// Strip text direction markers
-		.replace(/(\u200E|\u200F)/g, '')
-		// Split on newlines
-		.split(/\r?\n/);
-	let currentMessage : Message | undefined;
-	for(const line of lines) {
-		const match = line.match(MESSAGE_START);
-		if(match) {
-			storeMessage(currentMessage, chatId, con);
-			currentMessage = {
-				date: match[1],
-				sender: match[3],
-				contents: line.replace(MESSAGE_START, ''),
-			};
-			continue;
-		}
-		if(!currentMessage) {
-			if(line) {
-				console.warn(`Don’t know what to do with ${line}`);
-			}
-			continue;
-		}
-		currentMessage.contents += '\n' + line;
+	if(count > 0) {
+		await con.save();
+		console.log(`Inserted ${count} messages into ${name}.`);
+	} else {
+		console.log(`Chat ${name}: no messages inserted.`);
 	}
-	storeMessage(currentMessage, chatId, con);
-
-	con.save();
 }
