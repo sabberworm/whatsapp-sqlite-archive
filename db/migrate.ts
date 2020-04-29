@@ -29,6 +29,10 @@ const MIGRATIONS = [
 		FOREIGN KEY("chat") REFERENCES "chats"("id"),
 		FOREIGN KEY("attachment") REFERENCES "attachments"("id")
 	)`,
+	`CREATE INDEX "date_by_sender" ON "messages" (
+		"sender"	ASC,
+		"date"	ASC
+	)`,
 ];
 
 export const DB_VERSION = MIGRATIONS.length;
