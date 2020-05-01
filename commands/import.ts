@@ -1,8 +1,5 @@
 import { resolve } from 'https://deno.land/std@v0.41.0/path/posix.ts';
-import { BinaryFlag, EarlyExitFlag, Option, PartialOption } from 'https://deno.land/x/args@1.0.11/flag-types.ts';
-import { MAIN_COMMAND } from "https://deno.land/x/args@1.0.11/symbols.ts";
-import { Choice, Text } from 'https://deno.land/x/args@1.0.11/value-types.ts';
-import args from 'https://deno.land/x/args@1.0.11/wrapper.ts';
+import { IFlagsParseResult } from 'https://deno.land/x/cliffy@v0.4.0/command.ts';
 import { sha256 } from 'https://deno.land/x/sha256@v1.0.2/mod.ts';
 import { Connection } from '../db/mod.ts';
 import { ArchiveProvider, ExtractedArchive, ZippedArchive } from '../helpers/archive.ts';
@@ -131,59 +128,8 @@ async function extractAttachment(
 	return con.singleValue('SELECT last_insert_rowid() FROM attachments') as number;
 }
 
-export async function load(con : Connection, argv : string[]) {
-	const parser = args
-		.describe('Load a backup into the DB')
-		.with(EarlyExitFlag('help', {
-			alias: ['h'],
-			describe: 'Show help',
-			exit () {
-				console.log(parser.help())
-				return Deno.exit()
-			}
-		}))
-		.with(PartialOption('path', {
-			alias: ['p'],
-			type: Text,
-			default: '.',
-			describe: 'The path of the export. Can either be a folder containing _chat.txt, _chat.txt itself or a zip file.'
-		}))
-		.with(Option('name', {
-			alias: ['n'],
-			type: Text,
-			describe: 'The name of the chat to import.'
-		}))
-		.with(BinaryFlag('force', {
-			alias: ['f'],
-			describe: 'Set to import a chat that already exists.'
-		}))
-		.with(PartialOption('merge-stategy', {
-			alias: ['m'],
-			type: Choice(
-				{
-					value: 'replace',
-					describe: 'Deletes all messages in the existing chat before importing.'
-				},
-				{
-					value: 'amend',
-					describe: 'Imports all messages that don’t already exist. Uniqueness is determined by time stamp + sender.'
-				},
-				{
-					value: 'add',
-					describe: 'Imports all messages, including duplicates.'
-				},
-			),
-			default: 'amend',
-			describe: 'This option determines how messages are imported into a chat that already exists when --force is set.',
-		}));
-
-	const res = parser.parse(argv);
-	if (res.tag !== MAIN_COMMAND) {
-		console.error(res.error.toString());
-		throw Deno.exit(5);
-	}
-
-	const file = res.value.path;
+export async function load(options : IFlagsParseResult, con : Connection) {
+	const file = options.options.path as string;
 	let archive : ArchiveProvider | undefined;
 	const stat = await Deno.stat(file);
 	if(stat.isDirectory) {
@@ -197,10 +143,10 @@ export async function load(con : Connection, argv : string[]) {
 		throw Deno.exit(9);
 	}
 
-	const name = res.value.name;
+	const name = options.options.name as string;
 	let chatId = con.singleValue('SELECT id FROM chats WHERE name = ?', [name]);
 	let doAmend = false;
-	if(chatId !== undefined && !res.value.force) {
+	if(chatId !== undefined && !options.options.force) {
 		console.error(`Chat ${name} already exists. Use --force to amend/replace`);
 		throw Deno.exit(9);
 	}
@@ -208,8 +154,8 @@ export async function load(con : Connection, argv : string[]) {
 		con.db.query('INSERT INTO chats (name) VALUES (?)', [name]);
 		chatId = con.singleValue('SELECT last_insert_rowid() FROM chats');
 	} else {
-		doAmend = res.value['merge-stategy'] === 'amend';
-		if(res.value['merge-stategy'] === 'replace') {
+		doAmend = options.options['merge-stategy'] === 'amend';
+		if(options.options['merge-stategy'] === 'replace') {
 			// Delete all existing chats
 			con.db.query('DELETE FROM messages WHERE chat = ?', [chatId]);
 		}

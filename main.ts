@@ -1,55 +1,41 @@
-import { BinaryFlag, EarlyExitFlag, PartialOption } from 'https://deno.land/x/args@1.0.11/flag-types.ts';
-import { MAIN_COMMAND } from 'https://deno.land/x/args@1.0.11/symbols.ts';
-import { Text } from 'https://deno.land/x/args@1.0.11/value-types.ts';
-import args from 'https://deno.land/x/args@1.0.11/wrapper.ts';
-import * as commands from './commands/mod.ts';
+import { Command } from 'https://deno.land/x/cliffy@v0.4.0/command.ts';
+import { SUBCOMMANDS } from './commands/mod.ts';
 import { checkVersion, DB_VERSION, migrate } from './db/migrate.ts';
-import { openConnection } from './db/mod.ts';
+import { Connection, openConnection } from './db/mod.ts';
 
-const parser = args
-	.describe('Keep WhatsApp chats in sqlite')
-	.with(EarlyExitFlag('help', {
-		alias: ['h'],
-		describe: 'Show help',
-		exit () {
-			console.log(parser.sub);
-			console.log(parser.help())
-			return Deno.exit()
-		}
-	}))
-	.with(PartialOption('db', {
-		alias: ['f'],
-		type: Text,
-		default: './whatsapp.db',
-		describe: 'The database file to use.'
-	}))
-	.with(BinaryFlag('existing', {
-		alias: ['e'],
-		describe: 'Only work on existing databases, refuse to work if given DB does not exist or does not have a known schema.'
-	}))
-	.with(BinaryFlag('backupless', {
-		alias: ['B'],
-		describe: 'Do not create a backup when migrating to a new schema version.'
-	}));
-
-const res = parser.parse(Deno.args);
-if (res.tag !== MAIN_COMMAND) {
-	console.error(res.error.toString());
-	throw Deno.exit(5);
+let action : ((con : Connection) => Promise<void>) | undefined = undefined;
+export function configureAction(newAction : (con : Connection) => Promise<void>) {
+	action = newAction;
 }
 
-const db = res.value.db;
+let command = new Command()
+	.version('0.1.0')
+	.description('Keep WhatsApp chats in sqlite')
+	.option('-f --db-file <file:string>', 'The database file to use.', {default: './whatsapp.db', required: true})
+	.option('-e --existing-only', 'Only work on existing databases, refuse to work if given DB does not exist or does not have a known schema.')
+	.option('-B --backupless', 'Do not create a backup when migrating to a new schema version.');
+
+for(const subCommand in SUBCOMMANDS) {
+	command = command.command(subCommand, SUBCOMMANDS[subCommand]);
+}
+
+const options = await command.parse(Deno.args);
+
+console.log('options', options, action);
+// throw Deno.exit();
+
+const db = options.options.dbFile as string;
 const con = await openConnection(db);
 const dbVersion = checkVersion(con);
 
-if(dbVersion === 0 && res.value.existing) {
+if(dbVersion === 0 && options.options['existing-only']) {
 	console.error(`Database ${db} does not exist.`);
 	throw Deno.exit(9);
 }
 
 if(dbVersion < DB_VERSION) {
 	// Migration necessary
-	if(!res.value.backupless && dbVersion > 0) {
+	if(!options.options.backupless && dbVersion > 0) {
 		// Save pre-migration state as backup
 		await con.save(`${db}~`);
 	}
@@ -61,15 +47,19 @@ if(dbVersion < DB_VERSION) {
 	}
 }
 
-const command = res._[0];
-try {
-	if(command in commands) {
-		const cmdArgs = res._.slice(1);
-		const fn = (commands as any)[command];
-		await fn(con, cmdArgs);
-	} else {
-		commands.default(Object.keys(commands));
-	}
-} catch(e) {
-	console.error(`Error running command ${command}`, e);
+if(action) {
+	await action(con);
 }
+
+// const command = res._[0];
+// try {
+// 	if(command in commands) {
+// 		const cmdArgs = res._.slice(1);
+// 		const fn = (commands as any)[command];
+// 		await fn(con, cmdArgs);
+// 	} else {
+// 		commands.default(Object.keys(commands));
+// 	}
+// } catch(e) {
+// 	console.error(`Error running command ${command}`, e);
+// }
