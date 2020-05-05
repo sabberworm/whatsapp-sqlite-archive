@@ -1,5 +1,5 @@
-import { resolve } from 'https://deno.land/std@v0.42.0/path/posix.ts';
-import { IFlagsParseResult } from 'https://deno.land/x/cliffy@v0.5.1/command.ts';
+import { basename, normalize, resolve } from 'https://deno.land/std@v0.42.0/path/posix.ts';
+import { IFlags } from 'https://deno.land/x/cliffy@v0.5.1/flags.ts';
 import { sha256 } from 'https://deno.land/x/sha256@v1.0.2/mod.ts';
 import { Connection } from '../db/mod.ts';
 import { ArchiveProvider, ExtractedArchive, ZippedArchive } from '../helpers/archive.ts';
@@ -128,25 +128,31 @@ async function extractAttachment(
 	return con.singleValue('SELECT last_insert_rowid() FROM attachments') as number;
 }
 
-export async function load(options : IFlagsParseResult, con : Connection) {
-	const file = options.options.path as string;
+export async function load(con : Connection, flags : IFlags, file : string, name? : string) {
+	file = normalize(file);
 	let archive : ArchiveProvider | undefined;
+	if(file.endsWith('.txt')) {
+		file = resolve(file, '..');
+	}
 	const stat = await Deno.stat(file);
 	if(stat.isDirectory) {
 		archive = new ExtractedArchive(file);
-	} else if(file.endsWith('.txt')) {
-		archive = new ExtractedArchive(resolve(file, '..'), file);
+		if(!name) {
+			name = basename(file);
+		}
 	} else if(file.endsWith('.zip')) {
 		archive = new ZippedArchive(file);
+		if(!name) {
+			name = basename(file, '.zip');
+		}
 	} else {
 		console.error(`Not sure how to handle archive ${file}`);
 		throw Deno.exit(9);
 	}
 
-	const name = options.options.name as string;
 	let chatId = con.singleValue('SELECT id FROM chats WHERE name = ?', [name]);
 	let doAmend = false;
-	if(chatId !== undefined && !options.options.force) {
+	if(chatId !== undefined && !flags.force) {
 		console.error(`Chat ${name} already exists. Use --force to amend/replace`);
 		throw Deno.exit(9);
 	}
@@ -154,8 +160,8 @@ export async function load(options : IFlagsParseResult, con : Connection) {
 		con.db.query('INSERT INTO chats (name) VALUES (?)', [name]);
 		chatId = con.singleValue('SELECT last_insert_rowid() FROM chats');
 	} else {
-		doAmend = options.options['merge-stategy'] === 'amend';
-		if(options.options['merge-stategy'] === 'replace') {
+		doAmend = flags.mergeStategy === 'amend';
+		if(flags.mergeStategy === 'replace') {
 			// Delete all existing chats
 			con.db.query('DELETE FROM messages WHERE chat = ?', [chatId]);
 		}
