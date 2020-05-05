@@ -1,5 +1,5 @@
-import { resolve } from 'https://deno.land/std@v0.41.0/path/posix.ts';
-import { IFlagsParseResult } from 'https://deno.land/x/cliffy@v0.4.0/command.ts';
+import { resolve } from 'https://deno.land/std@v0.42.0/path/posix.ts';
+import { IFlagsParseResult } from 'https://deno.land/x/cliffy@v0.5.1/command.ts';
 import { sha256 } from 'https://deno.land/x/sha256@v1.0.2/mod.ts';
 import { Connection } from '../db/mod.ts';
 import { ArchiveProvider, ExtractedArchive, ZippedArchive } from '../helpers/archive.ts';

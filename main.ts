@@ -1,4 +1,4 @@
-import { Command } from 'https://deno.land/x/cliffy@v0.4.0/command.ts';
+import { Command } from 'https://deno.land/x/cliffy@v0.5.1/command.ts';
 import { SUBCOMMANDS } from './commands/mod.ts';
 import { checkVersion, DB_VERSION, migrate } from './db/migrate.ts';
 import { Connection, openConnection } from './db/mod.ts';

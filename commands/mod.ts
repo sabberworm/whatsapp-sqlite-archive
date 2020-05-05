@@ -1,5 +1,5 @@
-import { Command, IFlagsParseResult } from 'https://deno.land/x/cliffy@v0.4.0/command.ts';
-import { IFlagArgument, IFlagOptions, ITypeHandler } from 'https://deno.land/x/cliffy@v0.4.0/flags.ts';
+import { Command, IFlagsParseResult } from 'https://deno.land/x/cliffy@v0.5.1/command.ts';
+import { IFlagArgument, IFlagOptions, ITypeHandler } from 'https://deno.land/x/cliffy@v0.5.1/flags.ts';
 import { configureAction } from '../main.ts';
 import { load } from './import.ts';
 

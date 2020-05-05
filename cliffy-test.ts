@@ -1,4 +1,4 @@
-import { Command } from 'https://deno.land/x/cliffy@v0.4.0/command.ts';
+import { Command } from 'https://deno.land/x/cliffy@v0.5.1/command.ts';
 
 await new Command()
 	.option( '--flag1', 'flag 1' )
