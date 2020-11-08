@@ -44,7 +44,6 @@ export async function migrate(con : Connection, from : number, to : number = DB_
 	}
 	const newVersion = from + migrations.length;
 	con.db.query('INSERT OR REPLACE INTO meta (id, version) VALUES (0, ?)', [newVersion]);
-	await con.save();
 	return newVersion;
 }
 

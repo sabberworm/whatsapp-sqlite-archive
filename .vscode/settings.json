@@ -3,4 +3,7 @@
   "javascript.preferences.importModuleSpecifierEnding": "js",
   "typescript.preferences.importModuleSpecifierEnding": "js",
   "typescript.preferences.importModuleSpecifier": "relative",
+  "deno.import_intellisense_origins": {
+    "https://deno.land": true
+  },
 }

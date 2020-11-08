@@ -1,5 +1,5 @@
-import { Command } from 'https://deno.land/x/cliffy@v0.5.1/command.ts';
-import { IFlagArgument, IFlagOptions, IFlags, ITypeHandler } from 'https://deno.land/x/cliffy@v0.5.1/flags.ts';
+import { Command } from 'https://deno.land/x/cliffy@v0.15.0/command/mod.ts';
+import { IFlagArgument, IFlagOptions, IFlags, ITypeHandler } from 'https://deno.land/x/cliffy@v0.15.0/flags/mod.ts';
 import { checkVersion, DB_VERSION, migrate } from '../db/migrate.ts';
 import { Connection, openConnection } from '../db/mod.ts';
 import { load } from './import.ts';
@@ -57,7 +57,7 @@ for(const command of Object.values(SUBCOMMANDS)) {
 
 async function execute(this : (con : Connection, flags : IFlags, ...args : string[]) => Promise<void>, flags : IFlags, ...args : string[]) {
 	const db = flags.dbFile as string;
-	const con = await openConnection(db);
+	const con = openConnection(db);
 	const dbVersion = checkVersion(con);
 	
 	if(dbVersion === 0 && flags.existingOnly) {
@@ -69,7 +69,7 @@ async function execute(this : (con : Connection, flags : IFlags, ...args : strin
 		// Migration necessary
 		if(!flags.backupless && dbVersion > 0) {
 			// Save pre-migration state as backup
-			await con.save(`${db}~`);
+			await con.saveAs(`${db}~`);
 		}
 		const newVersion = await migrate(con, dbVersion);
 		if(dbVersion === 0) {

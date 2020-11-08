@@ -1,13 +1,20 @@
-import { basename, normalize, resolve } from 'https://deno.land/std@v0.42.0/path/posix.ts';
-import { IFlags } from 'https://deno.land/x/cliffy@v0.5.1/flags.ts';
-import { sha256 } from 'https://deno.land/x/sha256@v1.0.2/mod.ts';
+import { encode as base64 } from 'https://deno.land/std@0.76.0/encoding/base64.ts';
+import { Message as Sha256Message, Sha256 } from 'https://deno.land/std@0.76.0/hash/sha256.ts';
+import { basename, normalize, resolve } from 'https://deno.land/std@0.76.0/path/posix.ts';
+import { IFlags } from 'https://deno.land/x/cliffy@v0.15.0/flags/mod.ts';
 import { Connection } from '../db/mod.ts';
 import { ArchiveProvider, ExtractedArchive, ZippedArchive } from '../helpers/archive.ts';
+
+function sha256(message : Sha256Message) {
+	const sha = new Sha256();
+	sha.update(message);
+	return base64(sha.arrayBuffer()).substring(0, 32);
+}
+
 
 const MESSAGE_START = /^\[(\d{2}\.\d{2}\.\d{2}, \d{2}:\d{2}:\d{2})\] (([^:]+): )?/;
 
 const ATTACHMENT = /<attached: ([^>]+)>/;
-
 interface Message {
 	date : string;
 	sender : string | undefined;
@@ -110,7 +117,7 @@ async function extractAttachment(
 		return;
 	}
 	message.contents = message.contents.replace(ATTACHMENT, '');
-	const hash = (sha256(data, undefined, 'base64') as string).substring(0, 32);
+	const hash = sha256(data);
 	const fileExists = con.singleValue(
 		'SELECT COUNT(*) FROM files WHERE hash = ?',
 		[hash],
@@ -170,7 +177,6 @@ export async function load(con : Connection, flags : IFlags, file : string, name
 	const count = await storeMessages(archive, chatId, con, doAmend);
 
 	if(count > 0) {
-		await con.save();
 		console.log(`Inserted ${count} messages into ${name}.`);
 	} else {
 		console.log(`Chat ${name}: no messages inserted.`);
