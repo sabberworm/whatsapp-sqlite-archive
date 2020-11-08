@@ -1,6 +1,5 @@
-import { resolve } from 'https://deno.land/std@v0.41.0/path/posix.ts';
-import { JSZip, readZip } from 'https://deno.land/x/jszip@0.3.0/mod.ts';
-
+import { resolve } from 'https://deno.land/std@0.76.0/path/posix.ts';
+import { JSZip, readZip } from 'https://deno.land/x/jszip@0.7.0/mod.ts';
 
 export interface ArchiveProvider {
 	chat() : Promise<string>;

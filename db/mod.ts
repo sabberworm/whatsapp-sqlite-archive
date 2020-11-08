@@ -1,10 +1,10 @@
-import { DB, open, save } from 'https://deno.land/x/sqlite/mod.ts';
+import { DB } from 'https://deno.land/x/sqlite@v2.3.1/mod.ts';
 
 export class Connection {
-	constructor(public db : DB) {};
+	constructor(public file : string, public db : DB) {};
 
-	public save(path? : string) {
-		return save(this.db, path);
+	public async saveAs(path : string) {
+		await Deno.copyFile(this.file, path);
 	}
 
 	public close() {
@@ -20,6 +20,6 @@ export class Connection {
 	}
 }
 
-export async function openConnection(db : string) : Promise<Connection> {
-	return new Connection(await open(db));
+export function openConnection(db : string) : Connection {
+	return new Connection(db, new DB(db));
 }

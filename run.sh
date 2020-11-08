@@ -1,4 +1,4 @@
 #!/bin/bash
 
 DIR="$(dirname "${BASH_SOURCE[0]}")"
-exec deno --allow-read --allow-write "$DIR/main.ts" "$@"
+exec deno run --allow-read --allow-write --allow-env --unstable "$DIR/main.ts" "$@"
