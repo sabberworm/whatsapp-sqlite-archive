@@ -1,7 +1,6 @@
 import { encode as base64 } from 'https://deno.land/std@0.76.0/encoding/base64.ts';
 import { Message as Sha256Message, Sha256 } from 'https://deno.land/std@0.76.0/hash/sha256.ts';
 import { basename, normalize, resolve } from 'https://deno.land/std@0.76.0/path/posix.ts';
-import { IFlags } from 'https://deno.land/x/cliffy@v0.15.0/flags/mod.ts';
 import { Connection } from '../db/mod.ts';
 import { ArchiveProvider, ExtractedArchive, ZippedArchive } from '../helpers/archive.ts';
 
@@ -135,7 +134,7 @@ async function extractAttachment(
 	return con.singleValue('SELECT last_insert_rowid() FROM attachments') as number;
 }
 
-export async function load(con : Connection, flags : IFlags, file : string, name? : string) {
+export async function load(con : Connection, flags : Record<string, any>, file : string, name? : string) {
 	file = normalize(file);
 	let archive : ArchiveProvider | undefined;
 	if(file.endsWith('.txt')) {

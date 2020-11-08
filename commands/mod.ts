@@ -1,5 +1,6 @@
 import { Command } from 'https://deno.land/x/cliffy@v0.15.0/command/mod.ts';
-import { IFlagArgument, IFlagOptions, IFlags, ITypeHandler } from 'https://deno.land/x/cliffy@v0.15.0/flags/mod.ts';
+import type { ITypeInfo } from 'https://deno.land/x/cliffy@v0.15.0/flags/mod.ts';
+import type { ITypeHandler } from 'https://deno.land/x/cliffy@v0.15.0/flags/types.ts';
 import { checkVersion, DB_VERSION, migrate } from '../db/migrate.ts';
 import { Connection, openConnection } from '../db/mod.ts';
 import { load } from './import.ts';
@@ -16,14 +17,13 @@ const MERGE_STRATEGIES = {
 	},
 };
 
-const MERGE_TYPE : ITypeHandler<string | undefined> = (option : IFlagOptions, arg : IFlagArgument, value : string | false) => {
-	console.log('ITypeHandler', option, arg, value);
+const MERGE_TYPE : ITypeHandler<string | undefined> = ({value, name}: ITypeInfo) => {
 	if(!value) {
 		return;
 	}
 
 	if(!(value in MERGE_STRATEGIES)) {
-		throw new Error( `Option --${option.name} must be one of ${Object.keys(MERGE_STRATEGIES).join(', ')}, but got: ${value}`);
+		throw new Error( `Option --${name} must be one of ${Object.keys(MERGE_STRATEGIES).join(', ')}, but got: ${value}`);
 	}
 
 	return value;
@@ -46,16 +46,7 @@ export const SUBCOMMANDS : Record<string, Command> = {
 	list: new Command()
 };
 
-// Add default options to all commands
-for(const command of Object.values(SUBCOMMANDS)) {
-	command
-		.version('0.1.0')
-		.option('-f --db-file <file:string>', 'The database file to use.', {default: './whatsapp.db', required: true})
-		.option('-e --existing-only', 'Only work on existing databases, refuse to work if given DB does not exist or does not have a known schema.')
-		.option('-B --backupless', 'Do not create a backup when migrating to a new schema version.');
-}
-
-async function execute(this : (con : Connection, flags : IFlags, ...args : string[]) => Promise<void>, flags : IFlags, ...args : string[]) {
+async function execute(this : (con : Connection, flags : Record<string, any>, ...args : string[]) => Promise<void>, flags : Record<string, any>, ...args : string[]) {
 	const db = flags.dbFile as string;
 	const con = openConnection(db);
 	const dbVersion = checkVersion(con);
